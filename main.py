@@ -10,7 +10,7 @@ import random
 class Team:
     def __init__(self,members,index):
         self.team = members
-        self.points = 0
+        self.points = [0,0,0]
         self.rounds_won = 0
         self.index = index
 
@@ -98,8 +98,12 @@ class Turn:
             self.blit_results(TEAMS)
 
     def blit_results(self,two_participants:list[list]):
+        indexes_in_order = []
+        rounds_wonn = []
+        poinnts = []
         for i_match in range(4):
             for i_team in range(2):
+                name_p0 = two_participants[i_match][i_team][0]
                 i = i_match*2 + i_team
                 rect = pygame.rect.Rect(round(self.window.get_width() /5),round(i*self.window.get_height()*0.08+self.window.get_height()*0.23),
                                     round(self.window.get_width()/3),round(self.window.get_height()*0.07))
@@ -109,6 +113,20 @@ class Turn:
                 name = font.render(text, True, "black")
                 name_rect = name.get_rect(center=rect.center)
                 self.surface.blit(name, name_rect)
+                rectangle2 = pygame.rect.Rect(round(self.window.get_width()*3/5),round(i*self.window.get_height()*0.08+self.window.get_height()*0.23),
+                                              round(self.window.get_width()/25),round(self.window.get_width()/25))
+                pygame.draw.rect(self.surface,(200,200,200),rectangle2)
+                poinnts.append(teams_dic[name_p0].points[0]+teams_dic[name_p0].points[1]+teams_dic[name_p0].points[2])
+                rounds_wonn.append(teams_dic[name_p0].rounds_won)
+                points = font.render(str(teams_dic[name_p0].points[0]+teams_dic[name_p0].points[1]+teams_dic[name_p0].points[2]),True,"black")
+                points_rect = points.get_rect(center=rectangle2.center)
+                self.surface.blit(points,points_rect)
+                rectangle2.x += round(self.window.get_width()/17)
+                pygame.draw.rect(self.surface, (200, 200, 200), rectangle2)
+                rounds = font.render(str(teams_dic[name_p0].rounds_won), True, "black")
+                rounds_rect = points.get_rect(center=rectangle2.center)
+                self.surface.blit(rounds, rounds_rect)
+
 
     def activate(self):
         if not self.activated:
@@ -173,12 +191,12 @@ def draw_rounded_rect(surface: pygame.surface, rect, rect_color, bg_color):
     surface.blit(quarter_circle, (rect.right - rounding, rect.y))
 
 
-def create_new_matches(turn_number: int, textss: list[str]):
+def create_new_matches(turn_number: int, textss: list[int]):
     winners = []
     losers = []
     for match in range(4):
-        team1 = int(textss[match * 2])
-        team2 = int(textss[match * 2 + 1])
+        team1 = textss[match * 2]
+        team2 = textss[match * 2 + 1]
         if team1 > team2:
             winners.append(match * 2)
             losers.append(match * 2 + 1)
@@ -223,6 +241,8 @@ def create_new_matches(turn_number: int, textss: list[str]):
         matchs.append([losers[2], losers[3]])
         return matchs
 
+def update_team_score(teams):
+    screens[3].blit_results(teams)
 
 pygame.init()
 with open("teams.json", "r", encoding="UTF-8") as file:
@@ -246,6 +266,12 @@ for match in range(4):
         del teams_copy[selected]
         n_teams -= 1
     matches.append(nth_match)
+teams_dic = {}
+print(matches)
+for match in range(4):
+    for team in range(2):
+        teams_dic[matches[match][team][0]] = Team(matches[match][team],match*2+team)
+print(len(teams_dic))
 
 screens_titles = ["Premier Tour", "Deuxième Tour", "Troisième Tour", "Résultats"]
 screens = []
@@ -262,6 +288,8 @@ for i in range(4):
 active_screen = 0
 
 screens[0].blit_participants(matches)
+
+
 while True:
     window.fill((0, 0, 0))
     window.blit(screens[active_screen].surface, (0, 0))
@@ -310,7 +338,7 @@ while True:
                         if screens[active_screen].ok.rect.collidepoint(e.pos[0], e.pos[1]):
                             texts = []
                             for input_text in screens[active_screen].input_rects:
-                                texts.append(input_text.text)
+                                texts.append(int(input_text.text))
                                 if input_text.text == "":
                                     break
                             else:
@@ -318,16 +346,32 @@ while True:
                                 print(texts)
                                 if active_screen == 0:
                                     new_matches = create_new_matches(active_screen, texts)
+                                    for match in range(4):
+                                        for team in range(2):
+                                            teams_dic[matches[match][team][0]].points[0] = texts[match*2+team]
+                                    for match in range(4):
+                                        for team in range(2):
+                                            if teams_dic[matches[match][(team+1)%2][0]].points[0] < teams_dic[matches[match][team][0]].points[0]:
+                                                teams_dic[matches[match][team][0]].rounds_won = 1
                                     print(matches)
                                     for i in range(len(new_matches)):
                                         for j in range(2):
                                             team_index = new_matches[i][j]
                                             i_j_index = [math.floor(team_index / 2), team_index % 2]
                                             new_matches[i][j] = matches[i_j_index[0]][i_j_index[1]]
+                                    new_matches: list[list[list[str]]]
                                     screens[active_screen + 1].blit_participants(new_matches)
+                                    update_team_score(matches)
                                 elif active_screen == 1:
                                     print(new_matches)
                                     new_new_matches = create_new_matches(active_screen, texts)
+                                    for match in range(4):
+                                        for team in range(2):
+                                            teams_dic[new_matches[match][team][0]].points[1] = texts[match*2+team]
+                                    for match in range(4):
+                                        for team in range(2):
+                                            if teams_dic[new_matches[match][(team+1)%2][0]].points[1] < teams_dic[new_matches[match][team][0]].points[1]:
+                                                teams_dic[new_matches[match][team][0]].rounds_won += 1
                                     print(new_new_matches)
                                     for i in range(len(new_new_matches)):
                                         for j in range(2):
@@ -336,7 +380,16 @@ while True:
                                             new_new_matches[i][j] = new_matches[i_j_index[0]][i_j_index[1]]
                                     print(new_new_matches)
                                     screens[active_screen + 1].blit_participants(new_new_matches)
-
+                                    update_team_score(new_matches)
+                                elif active_screen == 2:
+                                    for match in range(4):
+                                        for team in range(2):
+                                            teams_dic[new_new_matches[match][team][0]].points[2] += texts[match*2+team]
+                                    for match in range(4):
+                                        for team in range(2):
+                                            if teams_dic[new_new_matches[match][(team+1)%2][0]].points[2] < teams_dic[new_new_matches[match][team][0]].points[2]:
+                                                teams_dic[new_new_matches[match][team][0]].rounds_won += 1
+                                    update_team_score(new_new_matches)
         if e.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
