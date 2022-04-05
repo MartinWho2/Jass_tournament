@@ -1,10 +1,17 @@
 import math
+import string
 import time
 
 import pygame
 import json
 import sys
 import random
+
+class Button:
+    def __init__(self,rect:pygame.rect.Rect):
+        self.rect = rect
+        self.title = pygame.font.Font("Millimetre-Light_web.ttf",round(self.rect.w/4)).render("OK",True,"black")
+        self.text_rect = self.title.get_rect(center=self.rect.center)
 
 
 class Input_Rect:
@@ -13,25 +20,33 @@ class Input_Rect:
         self.text = ""
         self.cursor_offset = 3
         self.time_bar = 0
+        self.input_text = pygame.font.Font("Millimetre-Light_web.ttf", round(window.get_width() / 60)).render(self.text,
+                                                                                                              True,
+                                                                                                              "black")
+        self.rect_input = self.input_text.get_rect(midleft=self.rect.midleft)
 
     def waiting_for_text(self,window):
         if self.text == "":
             self.cursor_offset = 3
         else:
             self.cursor_offset = 0
-        input_text = pygame.font.Font("Millimetre-Light_web.ttf",50).render(self.text,True,"black")
-        rect_input = input_text.get_rect(topleft=self.rect.topleft)
+        self.input_text = pygame.font.Font("Millimetre-Light_web.ttf", round(window.get_width() / 60)).render(self.text,
+                                                                                                              True,
+                                                                                                              "black")
+        self.rect_input = self.input_text.get_rect(midleft=self.rect.midleft)
         if self.time_bar < 15:
-            pygame.draw.line(window, (0, 0, 0), (rect_input.right + self.cursor_offset, rect_input.top),
-                             (rect_input.right + self.cursor_offset, rect_input.bottom))
+            pygame.draw.line(window, (0, 0, 0), (self.rect_input.right + self.cursor_offset, self.rect_input.top),
+                             (self.rect_input.right + self.cursor_offset, self.rect_input.bottom))
         self.time_bar += 1
         self.time_bar %= 30
-        window.blit(input_text,rect_input)
+
+    def blit_text(self,window):
+        window.blit(self.input_text, self.rect_input)
 
 
 class Rideaux:
     def __init__(self, title: str, rectangle: pygame.rect.Rect, active=False):
-        self.title = pygame.font.Font("Millimetre-Light_web.ttf", 30).render(title, True, (0,0,100))
+        self.title = pygame.font.Font("Millimetre-Light_web.ttf", 30).render(title, True, (0,0,0))
         self.rect: pygame.rect.Rect = rectangle
         self.surface = pygame.Surface((self.rect.w,self.rect.h), pygame.SRCALPHA)
         title_rect = self.title.get_rect(center=self.surface.get_rect().center)
@@ -52,19 +67,15 @@ class Rideaux:
 
 class Turn:
     def __init__(self, display: pygame.surface.Surface, title: str):
-        y_poses = [0.3,0.39,0.52,0.61]
+        self.activated = False
         size = display.get_size()
         self.input_rects = []
-        if title[0] != "R":
-            for column in range(2):
-                for row in range(4):
-                    a = Input_Rect(pygame.rect.Rect(round(size[0]/48+size[0]*6/15+column*size[0]/12),
-                                                    round(size[1]*y_poses[row]),round(size[0]/24),round(size[1]*0.08)))
-                    self.input_rects.append(a)
+
         self.surface = pygame.Surface(size, pygame.SRCALPHA)
 
         self.surface.blit(pygame.transform.scale(pygame.image.load("tournoi de jass (1).jpg"), window.get_size()),
                           (0, 0))
+        self.title_text = title
         self.title = pygame.font.Font("Minipax-Medium.ttf", 100).render(title, True, "black")
         #self.title = pygame.transform.scale(self.title,(round(self.title.get_width()*1.4),self.title.get_height()))
         title_rect = self.title.get_rect(center=(window.get_width() / 2, window.get_height() * 0.2))
@@ -74,13 +85,27 @@ class Turn:
         self.rect_selected = 0
         if title[0] in {"D","T"}:
             self.blit_not_allowed()
-
+    def activate(self):
+        if not self.activated:
+            self.activated = True
     def blit_not_allowed(self):
         text = pygame.font.Font("Millimetre-Light_web.ttf",90).render("PAS ENCORE DÉFINI",True,"black")
         text_rect = text.get_rect(center=(round(self.window.get_width()/2),round(self.window.get_height()/2)))
         self.surface.blit(text,text_rect)
 
     def blit_participants(self, two_persons: list):
+        y_poses = [0.3, 0.39, 0.52, 0.61]
+        size = self.window.get_size()
+        if self.title_text[0] != "R":
+            for column in range(2):
+                for row in range(4):
+                    a = Input_Rect(pygame.rect.Rect(round(size[0]/48+size[0]*6/15+column*size[0]/12),
+                                                    round(size[1]*y_poses[row]),round(size[0]/24),round(size[1]*0.08)))
+                    self.input_rects.append(a)
+            button_size = (round(size[0]/15),round(size[1]/15))
+            self.ok = Button(pygame.rect.Rect(round(size[0]/2-button_size[0]/2),round(size[1]*0.8),button_size[0],button_size[1]))
+            pygame.draw.rect(self.surface,"black",self.ok.rect,width = 2)
+            self.surface.blit(self.ok.title,self.ok.text_rect)
         for match in range(len(two_persons)):
             # pygame.draw.rect(first_turn, "orange", pygame.rect.Rect(50,round(match * window.get_height()/13*3 + window.get_height()/18),round(window.get_width()*5/6),round(window.get_height()/5)))
             for team in range(2):
@@ -147,7 +172,6 @@ for match in range(4):
     matches.append(nth_match)
 
 screens[0].blit_participants(matches)
-
 while True:
     window.fill((0, 0, 0))
     window.blit(screens[active_screen].surface, (0, 0))
@@ -155,6 +179,7 @@ while True:
         window.blit(rideau.surface,(rideau.rect.x,rideau.rect.y))
     for input_text in screens[active_screen].input_rects:
         pygame.draw.rect(window,"black",input_text.rect,width=1)
+        input_text.blit_text(window)
     if screens[active_screen].rect_selected_bool:
         screens[active_screen].input_rects[screens[active_screen].rect_selected].waiting_for_text(window)
     clock.tick(30)
@@ -163,7 +188,11 @@ while True:
         if e.type == pygame.KEYDOWN:
             if screens[active_screen].rect_selected_bool:
                 text = screens[active_screen].input_rects[screens[active_screen].rect_selected].text
-                if len(text) < 4:
+                if e.key == pygame.K_BACKSPACE:
+                    screens[active_screen].input_rects[screens[active_screen].rect_selected].text = screens[active_screen].input_rects[screens[active_screen].rect_selected].text[:-1]
+                elif e.key == pygame.K_RETURN:
+                    screens[active_screen].rect_selected_bool = False
+                elif len(text) < 4 and e.unicode in string.printable[0:10]:
                     screens[active_screen].input_rects[screens[active_screen].rect_selected].text += e.unicode
                     print(text)
 
@@ -184,6 +213,14 @@ while True:
                         rideau.activate()
                         rideaux[active_screen].activate()
                         active_screen = i
+                        break
+                else:
+                    if screens[active_screen].ok.rect.collidepoint(e.pos[0],e.pos[1]):
+                        for input_text in screens[active_screen].input_rects:
+                            if input_text.text == "":
+                                break
+                        else:
+                            screens[active_screen].activate()
         if e.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
