@@ -94,6 +94,8 @@ class Turn:
         self.surface.blit(text,text_rect)
 
     def blit_participants(self, two_persons: list):
+        center_rect = pygame.rect.Rect(round(self.window.get_width()/4),round(self.window.get_height()/3),round(self.window.get_width()/2),round(self.window.get_height()/2))
+        pygame.draw.rect(self.surface,(248,252,255),center_rect)
         y_poses = [0.3, 0.39, 0.52, 0.61]
         size = self.window.get_size()
         if self.title_text[0] != "R":
@@ -139,6 +141,58 @@ def draw_rounded_rect(surface:pygame.surface,rect,rect_color,bg_color):
     surface.blit(quarter_circle, (rect.right-rounding, rect.bottom - rounding))
     quarter_circle = pygame.transform.rotate(quarter_circle, 90)
     surface.blit(quarter_circle, (rect.right-rounding, rect.y))
+
+
+def create_new_matches(turn_number:int, textss: list[str]):
+    winners = []
+    losers = []
+    for match in range(4):
+        team1 = int(textss[match*2])
+        team2 = int(textss[match*2+1])
+        if team1 > team2:
+            winners.append(match*2)
+            losers.append(match*2+1)
+        else:
+            losers.append(match*2)
+            winners.append(match*2+1)
+    if turn_number == 0:
+        matchs = []
+        n_teams = 4
+        for match in range(2):
+            nth_match = []
+            for team in range(2):
+                selected = random.randint(0, n_teams - 1)
+                nth_match.append(winners[selected])
+                del winners[selected]
+                n_teams -= 1
+            matchs.append(nth_match)
+
+        n_teams = 4
+        for match in range(2):
+            nth_match = []
+            for team in range(2):
+                selected = random.randint(0, n_teams - 1)
+                nth_match.append(losers[selected])
+                del losers[selected]
+                n_teams -= 1
+            matchs.append(nth_match)
+        print(matchs)
+        return matchs
+    if turn_number == 1:
+        matchs = [[winners[0],winners[1]]]
+        n_teams = 4
+        middle_players = [winners[2],winners[3],losers[0],losers[1]]
+        for match in range(2):
+            nth_match = []
+            for team in range(2):
+                selected = random.randint(0, n_teams - 1)
+                nth_match.append(middle_players[selected])
+                del middle_players[selected]
+                n_teams -= 1
+            matchs.append(nth_match)
+        matchs.append([losers[1],losers[2]])
+        return matchs
+
 
 pygame.init()
 with open("teams.json", "r", encoding="UTF-8") as file:
@@ -215,12 +269,35 @@ while True:
                         active_screen = i
                         break
                 else:
-                    if screens[active_screen].ok.rect.collidepoint(e.pos[0],e.pos[1]):
-                        for input_text in screens[active_screen].input_rects:
-                            if input_text.text == "":
-                                break
-                        else:
-                            screens[active_screen].activate()
+                    if hasattr(screens[active_screen],"ok"):
+                        if screens[active_screen].ok.rect.collidepoint(e.pos[0],e.pos[1]):
+                            texts = []
+                            for input_text in screens[active_screen].input_rects:
+                                texts.append(input_text.text)
+                                if input_text.text == "":
+                                    break
+                            else:
+                                screens[active_screen].activate()
+                                print(texts)
+                                if active_screen == 0:
+                                    new_matches = create_new_matches(active_screen, texts)
+                                    print(matches)
+                                    for i in range(len(new_matches)):
+                                        for j in range(2):
+                                            team_index = new_matches[i][j]
+                                            i_j_index = [math.floor(team_index / 2), team_index % 2]
+                                            new_matches[i][j] = matches[i_j_index[0]][i_j_index[1]]
+                                    screens[active_screen + 1].blit_participants(new_matches)
+                                elif active_screen == 1:
+                                    print(new_matches)
+                                    new_new_matches = create_new_matches(active_screen,texts)
+                                    for i in range(len(new_new_matches)):
+                                        for j in range(2):
+                                            team_index = new_new_matches[i][j]
+                                            i_j_index = [math.floor(team_index/2),team_index%2]
+                                            new_new_matches[i][j] = new_matches[i_j_index[0]][i_j_index[1]]
+                                    screens[active_screen + 1].blit_participants(new_matches)
+
         if e.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
